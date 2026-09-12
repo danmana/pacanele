@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0c0e">
+  <meta name="description" content="Au închis păcănelele. Am păstrat butonul. O ultimă gheară, cu bani imaginari și zero regrete financiare.">
+  <title>Păcănele — Ultima gheară</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111115'/%3E%3Ctext x='32' y='48' text-anchor='middle' font-family='Georgia' font-weight='bold' font-size='50' fill='%23efbf67'%3E7%3C/text%3E%3C/svg%3E">
+  <style>/* INLINE_STYLE */</style>
+</head>
+<body>
+  <main id="experience" aria-label="Păcănele, simulator satiric de aparat cu bani imaginari">
+    <div id="scene" role="img" aria-label="Un aparat de păcănele întreg, într-o sală întunecată. Poți apăsa butoanele aparatului sau comenzile de mai jos."></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <header class="header">
+      <a class="wordmark" href="./" aria-label="Păcănele, de la început">păcănele<span>®</span></a>
+      <div class="edition"><i></i> CLUJ-NAPOCA <span>·</span> EDIȚIA DE ADIO</div>
+      <nav class="tools" aria-label="Setări">
+        <button id="sound" class="icon-button" aria-label="Oprește sunetul" aria-pressed="true" title="Sunet (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4 5 9H2v6h3l6 5V4Z"/><path class="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-off" d="m16 9 6 6m0-6-6 6"/></svg></button>
+        <button id="fullscreen" class="icon-button" aria-label="Ecran complet" title="Ecran complet (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+        <button id="info" class="icon-button info-button" aria-label="Despre joc și combinații câștigătoare" title="Despre joc">i</button>
+      </nav>
+    </header>
+    <section class="intro" aria-label="Ultima gheară">
+      <p class="eyebrow"><span></span> SALA S-A ÎNCHIS. BUTONUL A RĂMAS.</p>
+      <h1>Ultima <br><em>gheară.</em></h1>
+      <p class="intro-copy">Pentru cei care le duc dorul.<br>Și pentru cei care știu mai bine.</p>
+      <p class="free-note"><span>0</span> lei reali. Exact cât merită.</p>
+    </section>
+    <div class="machine-caption"><span class="live-dot"></span> APARATUL 007 <span class="caption-separator">/</span> <span id="machine-state">„Stă să dea.”</span></div>
+    <div class="banter" aria-live="polite" aria-atomic="true"><span class="quote-mark">“</span><p id="banter">Mai dau o gheară și plec.</p><span class="banter-credit"></span></div>
+    <p id="outcome" role="status" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap"></p>
+    <div class="orbit-hint" aria-hidden="true"><span>↔</span> Trage ca să te uiți în jur</div>
+    <section class="controls" aria-label="Comenzile aparatului">
+      <div class="wallet"><span class="control-label">BUZUNAR VIRTUAL</span><div><strong id="credit">200</strong><span>LEI</span></div><small id="balance">Pe zero. Deocamdată.</small></div>
+      <div class="control-divider"></div>
+      <button id="bet" class="bet-control" aria-label="Schimbă miza, acum 10 lei"><span class="control-label">MIZĂ <span>↻</span></span><span><strong id="bet-value">10</strong> <small>LEI</small></span></button>
+      <button id="spin" class="spin-button" disabled><span class="spin-symbol">↻</span><span id="spin-label">Se încălzește…</span><kbd>SPAȚIU</kbd></button>
+      <button id="cashout" class="cashout">Îmi scot banii și plec <span>↗</span></button>
+    </section>
+    <footer><span>O SATIRĂ. NU O SALĂ DE JOCURI.</span><span>Banii sunt imaginari. Timpul tău, nu.</span><span class="footer-year">CLUJ, 2026</span></footer>
+    <div id="loading" class="loading" role="status"><span class="loader-seven">7</span><p>Se încălzește aparatul<span>…</span></p></div>
+    <div id="webgl-error" class="error-panel" hidden><h2>Aparatul e rece.</h2><p>Browserul nu a putut porni grafica 3D. Activează accelerarea hardware sau încearcă un browser actualizat.</p><button onclick="location.reload()">Mai încerc o dată</button></div>
+    <noscript><div class="error-panel"><h2>Aparatul are nevoie de JavaScript.</h2><p>Activează JavaScript ca să intri în sală.</p></div></noscript>
+  </main>
+  <dialog id="about-dialog" aria-labelledby="about-title">
+    <button class="dialog-close" data-close aria-label="Închide">×</button>
+    <p class="eyebrow">FĂRĂ DEPOZITE. FĂRĂ RETRAGERI. FĂRĂ SCHEME.</p>
+    <h2 id="about-title">Casa câștigă.<br><em>Aici, doar o glumă.</em></h2>
+    <p>Clujul își ia adio de la păcănele. Noi am păstrat un aparat virtual pentru o ultimă gheară. Primești 200 de lei imaginari. Nu poți cumpăra credite și nu poți câștiga bani reali.</p>
+    <p>Apasă butonul galben, butoanele aparatului sau tasta <kbd>Spațiu</kbd>. Miza se schimbă între 10, 20 și 50 de lei. Trage de scenă pentru a privi aparatul din alt unghi.</p>
+    <h3>Ce dă linie?</h3>
+    <p class="rules-copy">3, 4 sau 5 simboluri identice, consecutive de la stânga, pe oricare dintre cele 3 rânduri. Plata este multiplicatorul × miza totală. Liniile se adună.</p>
+    <table><thead><tr><th>Simbol</th><th>3</th><th>4</th><th>5</th></tr></thead><tbody><tr><th>Cireșe / Lămâi</th><td>×2</td><td>×5</td><td>×12</td></tr><tr><th>Struguri / Pepeni</th><td>×3</td><td>×8</td><td>×20</td></tr><tr><th>Șeptari</th><td>×10</td><td>×25</td><td>×100</td></tr><tr><th>Stele</th><td>×5</td><td>×15</td><td>×40</td></tr></tbody></table>
+    <p class="rules-copy">Speciala: minimum 3 stele oriunde = încă ×5 miza. Fiecare simbol este ales aleatoriu, independent. „E cald” și „stă să dea” sunt doar replici. Jocul nu prezice și nu promite câștiguri.</p>
+    <a class="source-link" href="https://cluj24.ro/pacanelele-interzise-la-cluj-pokerul-primeste-unda-verde-iar-emil-boc-promite-ca-va-supraveghea-sala-de-la-geam-303495.html" target="_blank" rel="noopener noreferrer">Știrea de la care a pornit gluma · Cluj24 ↗</a>
+  </dialog>
+  <dialog id="receipt-dialog" class="receipt-dialog" aria-labelledby="receipt-title">
+    <button class="dialog-close" data-close aria-label="Înapoi la aparat">×</button>
+    <p class="eyebrow">APARATUL 007 · BON DE REALITATE</p>
+    <h2 id="receipt-title">Ai spart<br><em>timpul.</em></h2>
+    <p id="receipt-comment">Bine că n-au fost bani adevărați.</p>
+    <dl class="receipt-stats"><div><dt>Gheare date</dt><dd id="receipt-spins">0</dd></div><div><dt>Timp la aparat</dt><dd id="receipt-time">0 sec</dd></div><div><dt>Ai intrat cu</dt><dd>200 lei imaginari</dd></div><div><dt>Ai ieșit cu</dt><dd id="receipt-credit">200 lei imaginari</dd></div><div class="receipt-total"><dt>Bani reali pierduți</dt><dd>0 LEI</dd></div></dl>
+    <p class="receipt-moral">Cel mai bun câștig?<br>Să poți pleca oricând.</p>
+    <button id="restart" class="spin-button">Mai bag o fisă <span>↻</span></button>
+    <button class="receipt-back" data-close>Înapoi la aparat</button>
+  </dialog>
+  <script>/* INLINE_SCRIPT */</script>
+</body>
+</html>

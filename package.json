@@ -1,0 +1,15 @@
+{
+  "name": "pacanele",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Ultima gheară. O păcănea virtuală, cu bani imaginari și umor românesc.",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/game.test.mjs",
+    "test:browser": "playwright test"
+  },
+  "dependencies": { "three": "0.180.0" },
+  "devDependencies": { "@playwright/test": "1.55.1", "esbuild": "0.25.10" }
+}
