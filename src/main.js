@@ -9,7 +9,7 @@ const game = new Game();
 const sound = new CabinetAudio();
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const format = new Intl.NumberFormat('ro-RO');
-let scene, screen, ready = false, winningUntil = 0, lastPaint = 0, sessionNudgeShown = false;
+let scene, screen, ready = false, winningUntil = 0, lastPaint = 0;
 let startedWallTime = null, pendingCashout = false;
 const quips = {
   spin: ['Hai cu șeptarii!', 'Ultima gheară. Pe cuvânt.', 'Mai dau o gheară și mă duc.', 'L-am mirosit. Acum dă.', 'Îmi scot banii și plec.'],
@@ -67,10 +67,9 @@ function finishSpin() {
   sync(); screen.draw(performance.now(), game);
   $('outcome').textContent = `Gheara ${game.spins}. ${result.payout ? `Câștig: ${result.payout} lei imaginari.` : 'Nicio combinație câștigătoare.'} Credit rămas: ${game.credit} lei imaginari.`;
   if (pendingCashout) { pendingCashout = false; showReceipt(); }
-  else if (!sessionNudgeShown && startedWallTime && Date.now() - startedWallTime >= 120000) {
-    sessionNudgeShown = true; showReceipt('Au trecut două minute. Ultima chiar poate fi ultima.');
-  } else if (game.credit < BETS[0]) {
+  else if (game.credit === 0) {
     say('M-a curățat. Bine că erau imaginari.'); $('machine-state').textContent = '„M-a ras.”';
+    showReceipt('Aparatul ți-a curățat buzunarul. Virtual.');
   }
 }
 function showReceipt(comment) {
@@ -113,7 +112,7 @@ document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('c
   if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
 }));
 $('restart').addEventListener('click', () => {
-  game.reset(); startedWallTime = null; sessionNudgeShown = false; winningUntil = 0;
+  game.reset(); startedWallTime = null; winningUntil = 0;
   screen.result = null; $('receipt-dialog').close();
   say('Mai bag o fisă. De data asta sigur plec.'); $('machine-state').textContent = '„Stă să dea.”'; sync(); screen.draw(performance.now(), game);
 });

@@ -82,7 +82,7 @@ test('self-contained build runs from disk with networking disabled', async ({ br
   expect(errors).toEqual([]); await context.close();
 });
 
-test('winning lines, speciala, and the two-minute receipt follow actual outcomes', async ({ page }) => {
+test('winning lines and speciala keep playing past two minutes until the player leaves', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   // Control the entropy boundary in this test only. Production has no forced-outcome hooks.
   await page.addInitScript(() => {
@@ -100,7 +100,42 @@ test('winning lines, speciala, and the two-minute receipt follow actual outcomes
   await page.evaluate(() => { const future = Date.now() + 121000; Date.now = () => future; });
   await page.locator('#spin').click(); await settled(page);
   expect(await page.evaluate(() => window.__pacanele.state.result.bonus)).toBe(50);
+  await expect(page.locator('#receipt-dialog')).not.toBeVisible();
+  await page.evaluate(() => { const future = Date.now() + 3600000; Date.now = () => future; });
+  await page.locator('#spin').click(); await settled(page);
+  await expect(page.locator('#receipt-dialog')).not.toBeVisible();
+  await page.locator('#cashout').click();
   await expect(page.locator('#receipt-dialog')).toBeVisible();
-  await expect(page.locator('#receipt-comment')).toContainText('Au trecut două minute');
-  await expect(page.locator('#receipt-spins')).toHaveText('2');
+  await expect(page.locator('#receipt-spins')).toHaveText('3');
+});
+
+test('zero credits ends the session only after the last spin settles', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => {
+    let draws = 0;
+    const losingDraws = [0, .3, .5, .7, .85];
+    crypto.getRandomValues = buffer => {
+      for (let i = 0; i < buffer.length; i++) buffer[i] = Math.floor(losingDraws[draws++ % losingDraws.length] * 4294967296);
+      return buffer;
+    };
+  });
+  await ready(page);
+  await page.locator('#bet').click(); await page.locator('#bet').click();
+  await expect(page.locator('#bet-value')).toHaveText('50');
+  for (let spin = 1; spin <= 3; spin++) {
+    await page.locator('#spin').click(); await settled(page);
+    await expect(page.locator('#credit')).toHaveText(String(200 - spin * 50));
+    await expect(page.locator('#receipt-dialog')).not.toBeVisible();
+  }
+  await page.locator('#spin').click();
+  await expect(page.locator('#credit')).toHaveText('0');
+  await expect(page.locator('#spin')).toBeDisabled();
+  await expect(page.locator('#receipt-dialog')).not.toBeVisible();
+  await settled(page);
+  await expect(page.locator('#receipt-dialog')).toBeVisible();
+  await expect(page.locator('#receipt-spins')).toHaveText('4');
+  await expect(page.locator('#receipt-credit')).toHaveText('0 lei imaginari');
+  await page.locator('#restart').click();
+  await expect(page.locator('#credit')).toHaveText('200');
+  await expect(page.locator('#receipt-dialog')).not.toBeVisible();
 });

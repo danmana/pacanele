@@ -25,8 +25,7 @@ The output is **`dist/index.html`**, a single self-contained HTML page. Three.js
 - Change the stake with **Miză** or the white stake buttons: 10, 20, or 50 fictional lei.
 - Drag the room to inspect the full cabinet from different angles.
 - **M** toggles sound; **F** toggles fullscreen. Browsers without the Fullscreen API use an expanded viewport.
-- **Îmi scot banii și plec** prints a satirical receipt. **Mai bag o fisă** starts a fresh session with 200 credits.
-- After two minutes, the next completed spin offers the receipt. It is possible to leave at any time.
+- Reaching zero credits or choosing **Îmi scot banii și plec** prints a satirical receipt. **Mai bag o fisă** starts a fresh session with 200 credits.
 
 Three horizontal lines pay for matching symbols consecutively from the left. The information dialog contains the exact multipliers. At least three stars anywhere add a 5× stake bonus. Results are independently sampled with Web Crypto; there is no rigged first win or adaptive outcome selection. Balances last only for the current page session.
 
