@@ -1,0 +1,9 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+examples/
+.DS_Store
+.env*
+.vercel/
+.git/
