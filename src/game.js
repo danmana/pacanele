@@ -5,6 +5,14 @@ export const WEIGHTS = [5, 5, 4, 4, 3, 1];
 export const PAYOUTS = [
   [2, 5, 12], [2, 5, 12], [3, 8, 20], [3, 8, 20], [10, 25, 100], [5, 15, 40],
 ];
+const MACHINE_STATES = {
+  LLLL: 'Înghețat', LLL: 'Rece', LLW: 'Se dezmorțește', LWL: 'Stă să dea',
+  LWW: 'Călduț', WLL: 'Se răcește', WLW: 'Stă să dea', WWL: 'Călduț',
+  WWW: 'Cald', WWWW: 'Fierbinte',
+};
+export function machineStateFor(outcomes) {
+  return MACHINE_STATES[outcomes.slice(-4)] ?? MACHINE_STATES[outcomes.slice(-3)] ?? 'În așteptare';
+}
 export function randomUnit() {
   return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
 }
@@ -43,9 +51,11 @@ export class Game {
   reset() {
     this.credit = START_CREDIT; this.betIndex = 0; this.spins = 0;
     this.totalBet = 0; this.totalWon = 0; this.lastWin = 0;
+    this.recentOutcomes = '';
     this.pending = null; this.startedAt = null;
   }
   get bet() { return BETS[this.betIndex]; }
+  get machineState() { return machineStateFor(this.recentOutcomes); }
   cycleBet() {
     if (this.pending) return false;
     this.betIndex = (this.betIndex + 1) % BETS.length;
@@ -65,6 +75,7 @@ export class Game {
     if (!this.pending) return null;
     const result = this.pending;
     this.credit += result.payout; this.totalWon += result.payout;
+    this.recentOutcomes = (this.recentOutcomes + (result.payout > 0 ? 'W' : 'L')).slice(-4);
     this.lastWin = result.payout; this.pending = null;
     return result;
   }

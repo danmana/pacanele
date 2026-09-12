@@ -2,6 +2,7 @@ import { Game, START_CREDIT, BETS } from './game.js';
 import { Screen } from './textures.js';
 import { CabinetScene } from './scene.js';
 import { CabinetAudio } from './audio.js';
+import { attributionFor } from './banter.js';
 import * as THREE from 'three';
 
 const $ = id => document.getElementById(id);
@@ -16,13 +17,13 @@ const quips = {
   lose: ['M-a curentat, frate!', 'E rece. Ca promisiunea că plec.', 'Las’ că îl întorc eu.', 'M-a ras. Cu tot cu speranțe.', 'E setat. Pe luat.', 'Băga-mi-aș picioarele!', 'Ultima sută. Celebră vorbă.'],
   win: ['Am simțit, băi, am simțit!', 'Mamă, ce linie!', 'Bine mă! Dă și el ceva.', 'Așa mai merge!', 'Am știut eu! Ziceam și data trecută.'],
 };
-const nicknames = ['Dorel', 'Gigel', 'Gogu', 'Mișu', 'Bebe', 'Costică', 'Fănel', 'Neluțu', 'Sandu', 'Vio', 'Puiu', 'Marcel', 'Elvis', 'Vali', 'Sorinel'];
 function say(value) {
   $('banter').textContent = value;
-  document.querySelector('.banter-credit').textContent = `— ${pick(nicknames)}, ${1990 + Math.floor(Math.random() * 37)}`;
+  document.querySelector('.banter-credit').textContent = attributionFor(value);
 }
 function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
 function sync() {
+  $('machine-state').textContent = game.machineState;
   $('credit').textContent = format.format(game.credit); $('bet-value').textContent = game.bet;
   $('bet').setAttribute('aria-label', `Schimbă miza, acum ${game.bet} lei`);
   const delta = game.credit - START_CREDIT;
@@ -47,7 +48,7 @@ async function spin() {
   const result = game.spin(); if (!result) return;
   startedWallTime ??= Date.now();
   scene.press(); sound.startSpin(); screen.start(result, performance.now(), reducedMotion);
-  say(pick(quips.spin)); $('machine-state').textContent = '„Hai, dă-o!”'; sync();
+  say(pick(quips.spin)); sync();
 }
 async function bet() {
   if (!ready || game.pending) return;
@@ -62,13 +63,12 @@ function finishSpin() {
   if (result.payout) {
     sound.win(result.jackpot || result.bonus > 0); winningUntil = performance.now() + 3500;
     say(result.jackpot ? 'L-am spart! Am spart banca!' : result.bonus ? 'Mi-a dat speciala!' : pick(quips.win));
-    $('machine-state').textContent = `+${format.format(result.payout)} lei imaginari`;
-  } else { sound.lose(); say(pick(quips.lose)); $('machine-state').textContent = '„E rece.”'; }
+  } else { sound.lose(); say(pick(quips.lose)); }
   sync(); screen.draw(performance.now(), game);
   $('outcome').textContent = `Gheara ${game.spins}. ${result.payout ? `Câștig: ${result.payout} lei imaginari.` : 'Nicio combinație câștigătoare.'} Credit rămas: ${game.credit} lei imaginari.`;
   if (pendingCashout) { pendingCashout = false; showReceipt(); }
   else if (game.credit === 0) {
-    say('M-a curățat. Bine că erau imaginari.'); $('machine-state').textContent = '„M-a ras.”';
+    say('M-a curățat. Bine că erau imaginari.');
     showReceipt('Aparatul ți-a curățat buzunarul. Virtual.');
   }
 }
@@ -114,7 +114,7 @@ document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('c
 $('restart').addEventListener('click', () => {
   game.reset(); startedWallTime = null; winningUntil = 0;
   screen.result = null; $('receipt-dialog').close();
-  say('Mai bag o fisă. De data asta sigur plec.'); $('machine-state').textContent = '„Stă să dea.”'; sync(); screen.draw(performance.now(), game);
+  say('Mai bag o fisă. De data asta sigur plec.'); sync(); screen.draw(performance.now(), game);
 });
 document.addEventListener('keydown', event => {
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;

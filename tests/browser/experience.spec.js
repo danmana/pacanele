@@ -15,6 +15,9 @@ test('desktop renders, plays, locks during spins, reports results, and prints a 
   page.on('request', request => { if (!request.url().startsWith('http://localhost:4173') && !request.url().startsWith('data:')) external.push(request.url()); });
   await ready(page);
   await expect(page).toHaveTitle('Păcănele — Ultima gheară');
+  await expect(page.locator('.free-note')).toHaveCount(0);
+  await expect(page.locator('.maker-credit')).toHaveText('Facut la misto de @danmana si GPT Astra');
+  await expect(page.locator('.maker-credit')).toHaveAttribute('href', 'https://x.com/danmana');
   await page.screenshot({ path: 'test-results/desktop.png' });
   await page.locator('#spin').click();
   await expect(page.locator('#spin')).toBeDisabled(); await expect(page.locator('#bet')).toBeDisabled();
@@ -104,6 +107,7 @@ test('winning lines and speciala keep playing past two minutes until the player 
   await page.evaluate(() => { const future = Date.now() + 3600000; Date.now = () => future; });
   await page.locator('#spin').click(); await settled(page);
   await expect(page.locator('#receipt-dialog')).not.toBeVisible();
+  await expect(page.locator('#machine-state')).toHaveText('Cald');
   await page.locator('#cashout').click();
   await expect(page.locator('#receipt-dialog')).toBeVisible();
   await expect(page.locator('#receipt-spins')).toHaveText('3');
@@ -127,15 +131,37 @@ test('zero credits ends the session only after the last spin settles', async ({ 
     await expect(page.locator('#credit')).toHaveText(String(200 - spin * 50));
     await expect(page.locator('#receipt-dialog')).not.toBeVisible();
   }
+  await expect(page.locator('#machine-state')).toHaveText('Rece');
   await page.locator('#spin').click();
+  await expect(page.locator('#machine-state')).toHaveText('Rece');
   await expect(page.locator('#credit')).toHaveText('0');
   await expect(page.locator('#spin')).toBeDisabled();
   await expect(page.locator('#receipt-dialog')).not.toBeVisible();
   await settled(page);
+  await expect(page.locator('#machine-state')).toHaveText('Înghețat');
   await expect(page.locator('#receipt-dialog')).toBeVisible();
   await expect(page.locator('#receipt-spins')).toHaveText('4');
   await expect(page.locator('#receipt-credit')).toHaveText('0 lei imaginari');
   await page.locator('#restart').click();
   await expect(page.locator('#credit')).toHaveText('200');
   await expect(page.locator('#receipt-dialog')).not.toBeVisible();
+  await expect(page.locator('#machine-state')).toHaveText('În așteptare');
+});
+
+test('phrase attributions survive reloads and the maker link is tappable on mobile', async ({ page, context }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await ready(page);
+  const attribution = await page.locator('.banter-credit').textContent();
+  await page.locator('#bet').click();
+  const stakeAttribution = await page.locator('.banter-credit').textContent();
+  await page.locator('#bet').click(); await page.locator('#bet').click(); await page.locator('#bet').click();
+  await expect(page.locator('.banter-credit')).toHaveText(stakeAttribution);
+  await page.reload(); await page.waitForFunction(() => window.__pacanele?.state.ready);
+  await expect(page.locator('.banter-credit')).toHaveText(attribution);
+  await context.route('https://x.com/danmana', route => route.fulfill({ contentType: 'text/html', body: '<p>Profil</p>' }));
+  const popup = page.waitForEvent('popup');
+  await page.locator('.maker-credit').click();
+  const profile = await popup; await profile.waitForLoadState();
+  expect(profile.url()).toBe('https://x.com/danmana');
+  await profile.close();
 });

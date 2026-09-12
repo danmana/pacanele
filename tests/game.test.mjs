@@ -1,8 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Game, evaluate, makeGrid, pickSymbol, BETS } from '../src/game.js';
+import { Game, evaluate, makeGrid, pickSymbol, machineStateFor, BETS } from '../src/game.js';
 
 const empty = () => [[0,1,2],[1,2,3],[2,3,4],[3,4,0],[4,0,1]];
+test('machine state follows every specified sequence, with four-spin extremes taking precedence', () => {
+  const expected = {
+    LLLL: 'Înghețat', LLL: 'Rece', LLW: 'Se dezmorțește', LWL: 'Stă să dea',
+    LWW: 'Călduț', WLL: 'Se răcește', WLW: 'Stă să dea', WWL: 'Călduț',
+    WWW: 'Cald', WWWW: 'Fierbinte',
+  };
+  for (const [history, label] of Object.entries(expected)) assert.equal(machineStateFor(history), label, history);
+  for (const history of ['', 'L', 'W', 'LL', 'LW', 'WL', 'WW']) assert.equal(machineStateFor(history), 'În așteptare');
+  assert.equal(machineStateFor('LLLLW'), 'Se dezmorțește');
+  assert.equal(machineStateFor('WWWWL'), 'Călduț');
+  assert.equal(machineStateFor('WLLLL'), 'Înghețat');
+  assert.equal(machineStateFor('LWWWW'), 'Fierbinte');
+});
+test('only settled spins affect machine state; history rolls forward and resets with a new session', () => {
+  const game = new Game(() => 0);
+  for (let spin = 0; spin < 4; spin++) {
+    game.spin(); assert.equal(game.recentOutcomes, 'W'.repeat(spin));
+    game.settle(); assert.equal(game.recentOutcomes, 'W'.repeat(spin + 1));
+    game.settle(); assert.equal(game.recentOutcomes, 'W'.repeat(spin + 1));
+  }
+  assert.equal(game.machineState, 'Fierbinte');
+  let draw = 0; game.random = () => [0, .3, .5, .7, .85][draw++ % 5];
+  game.spin(); assert.equal(game.machineState, 'Fierbinte'); game.settle();
+  assert.equal(game.recentOutcomes, 'WWWL'); assert.equal(game.machineState, 'Călduț');
+  game.reset(); assert.equal(game.recentOutcomes, ''); assert.equal(game.machineState, 'În așteptare');
+});
 test('only consecutive symbols from the left pay on three horizontal lines', () => {
   const grid = empty(); grid[1][0] = 0; grid[2][0] = 0;
   assert.deepEqual(evaluate(grid, 10), { payout: 20, lines: [{ row: 0, symbol: 0, count: 3, amount: 20 }], bonus: 0, jackpot: false });
