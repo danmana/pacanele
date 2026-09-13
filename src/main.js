@@ -13,9 +13,9 @@ const format = new Intl.NumberFormat('ro-RO');
 let scene, screen, ready = false, winningUntil = 0, lastPaint = 0;
 let startedWallTime = null, pendingCashout = false;
 const quips = {
-  spin: ['Hai cu șeptarii!', 'Ultima gheară. Pe cuvânt.', 'Mai dau o gheară și mă duc.', 'L-am mirosit. Acum dă.', 'Îmi scot banii și plec.'],
-  lose: ['M-a curentat, frate!', 'E rece. Ca promisiunea că plec.', 'Las’ că îl întorc eu.', 'M-a ras. Cu tot cu speranțe.', 'E setat. Pe luat.', 'Băga-mi-aș picioarele!', 'Ultima sută. Celebră vorbă.'],
-  win: ['Am simțit, băi, am simțit!', 'Mamă, ce linie!', 'Bine mă! Dă și el ceva.', 'Așa mai merge!', 'Am știut eu! Ziceam și data trecută.'],
+  spin: ['Hai cu șeptarii!', 'Ultima gheară. Pe cuvânt.', 'Mai dau o gheară și mă duc.', 'L-am mirosit. Acum dă.', 'Îmi scot banii și plec.', 'Hai că poți!'],
+  lose: ['M-a curentat, frate!', 'E rece ca mortu!', 'Las’ că îl întorc eu.', 'Nu cred, n-are cum!', 'E setat. Pe luat.', 'Băga-mi-aș picioarele!', 'Ultima sută e cu noroc.', 'Să mor io dacă mai bag!'],
+  win: ['Am simțit, băi, am simțit!', 'Mamă, ce linie!', 'Bine mă! Dă și el ceva.', 'Așa mai merge!', 'Am știut eu!', 'Ți-am zis că dă? Ți-am zis!'],
 };
 function say(value) {
   $('banter').textContent = value;
@@ -54,7 +54,7 @@ async function bet() {
   if (!ready || game.pending) return;
   await sound.unlock().catch(() => {}); if (!game.cycleBet()) return;
   sound.clack(); scene.press(scene.buttons[0]);
-  say(game.bet === 50 ? 'Bagă mare! Sunt bani desenați.' : `Miza: ${game.bet} lei. Curaj imaginar.`);
+  say(game.bet === 50 ? 'Bagă mare sau mergi acasa!' : game.bet === 20 ? `Dublu sau nimic.`: `Bani de cafea.`);
   sync(); screen.draw(performance.now(), game);
 }
 function finishSpin() {

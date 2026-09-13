@@ -16,7 +16,7 @@ test('desktop renders, plays, locks during spins, reports results, and prints a 
   await ready(page);
   await expect(page).toHaveTitle('Păcănele — Ultima gheară');
   await expect(page.locator('.free-note')).toHaveCount(0);
-  await expect(page.locator('.maker-credit')).toHaveText('Facut la misto de @danmana si GPT Astra');
+  await expect(page.locator('.maker-credit')).toHaveText('Făcut la mișto de @danmana și GPT Astra');
   await expect(page.locator('.maker-credit')).toHaveAttribute('href', 'https://x.com/danmana');
   await page.screenshot({ path: 'test-results/desktop.png' });
   await page.locator('#spin').click();
