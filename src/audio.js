@@ -1,6 +1,7 @@
 export class CabinetAudio {
-  constructor() { this.enabled = true; this.context = null; this.motor = null; }
+  constructor() { this.enabled = true; this.context = null; this.motor = null; this.activeVoices = 0; this.sleepTimer = null; this.suspending = null; }
   async unlock() {
+    clearTimeout(this.sleepTimer);
     if (!this.context) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
@@ -10,7 +11,21 @@ export class CabinetAudio {
       this.noise = this.context.createBuffer(1, this.context.sampleRate * 2, this.context.sampleRate);
       const data = this.noise.getChannelData(0); for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     }
+    if (this.suspending) await this.suspending;
     if (this.context.state === 'suspended') await this.context.resume();
+    this.sleepWhenQuiet();
+  }
+  sleepWhenQuiet() {
+    clearTimeout(this.sleepTimer);
+    if (!this.context || this.activeVoices || this.motor) return;
+    this.sleepTimer = setTimeout(() => {
+      if (this.activeVoices || this.motor || this.context.state !== 'running') return;
+      this.suspending = this.context.suspend().catch(() => {}).finally(() => { this.suspending = null; });
+    }, 250);
+  }
+  trackVoice(source, cleanup) {
+    clearTimeout(this.sleepTimer); this.activeVoices++;
+    source.onended = () => { cleanup(); this.activeVoices--; this.sleepWhenQuiet(); };
   }
   setEnabled(value) { this.enabled = value; if (this.context) this.master.gain.setTargetAtTime(value ? .55 : 0, this.context.currentTime, .025); }
   tone(frequency, duration = .15, volume = .1, type = 'sine', delay = 0, endFrequency) {
@@ -19,7 +34,7 @@ export class CabinetAudio {
     const osc = c.createOscillator(), gain = c.createGain(); osc.type = type; osc.frequency.setValueAtTime(frequency, start);
     if (endFrequency) osc.frequency.exponentialRampToValueAtTime(endFrequency, start + duration);
     gain.gain.setValueAtTime(0, start); gain.gain.linearRampToValueAtTime(volume, start + .003); gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
-    osc.connect(gain); gain.connect(this.master); osc.start(start); osc.stop(start + duration + .02); osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+    osc.connect(gain); gain.connect(this.master); osc.start(start); osc.stop(start + duration + .02); this.trackVoice(osc, () => { osc.disconnect(); gain.disconnect(); });
   }
   burst(duration, frequency, volume, delay = 0) {
     if (!this.context || !this.enabled) return;
@@ -28,7 +43,7 @@ export class CabinetAudio {
     filter.type = 'bandpass'; filter.frequency.value = frequency; filter.Q.value = .7;
     gain.gain.setValueAtTime(volume, start); gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
     source.connect(filter); filter.connect(gain); gain.connect(this.master); source.start(start, Math.random()); source.stop(start + duration);
-    source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
+    this.trackVoice(source, () => { source.disconnect(); filter.disconnect(); gain.disconnect(); });
   }
   clack() { this.burst(.055, 1700, .6); this.tone(190, .095, .32, 'triangle', 0, 65); this.burst(.024, 3300, .18, .047); }
   startSpin() {
@@ -40,6 +55,8 @@ export class CabinetAudio {
     const lfo = c.createOscillator(), depth = c.createGain(); lfo.frequency.value = 27; depth.gain.value = .035; lfo.connect(depth); depth.connect(gain.gain);
     source.connect(filter); filter.connect(gain); gain.connect(this.master); source.start(); lfo.start();
     this.motor = { source, filter, gain, lfo, depth };
+    const nodes = this.motor;
+    this.trackVoice(source, () => Object.values(nodes).forEach(node => node.disconnect()));
     this.tone(170, .45, .08, 'sawtooth', 0, 320);
   }
   reelStop(index) { this.burst(.08, 900, .32); this.tone(115 + index * 16, .1, .18, 'triangle', 0, 60); this.tone(540 + index * 80, .07, .035); }
@@ -48,7 +65,6 @@ export class CabinetAudio {
     const motor = this.motor; this.motor = null;
     motor.gain.gain.setTargetAtTime(0, this.context.currentTime, .025);
     motor.source.stop(this.context.currentTime + .15); motor.lfo.stop(this.context.currentTime + .15);
-    motor.source.onended = () => Object.values(motor).forEach(node => node.disconnect());
   }
   win(big = false) {
     const notes = big ? [523, 659, 784, 1047, 784, 1047, 1319, 1568] : [659, 784, 1047, 1319];
@@ -56,5 +72,5 @@ export class CabinetAudio {
     for (let i = 0; i < (big ? 22 : 9); i++) { this.tone(2400 + Math.random() * 2800, .13, .025, 'sine', .3 + i * .065); this.burst(.03, 6500, .025, .3 + i * .065); }
   }
   lose() { this.tone(196, .2, .055, 'triangle'); this.tone(146.8, .27, .055, 'triangle', .16); }
-  receipt() { for (let i = 0; i < 9; i++) this.burst(.038, 2200, .05, i * .05); }
+  async receipt() { await this.unlock().catch(() => {}); for (let i = 0; i < 9; i++) this.burst(.038, 2200, .05, i * .05); }
 }

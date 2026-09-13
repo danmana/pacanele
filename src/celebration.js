@@ -126,7 +126,7 @@ export class WinEffects {
     this.anchor.set(0, 2.15, .8).project(this.camera);
     const x = clamp((this.anchor.x + 1) * width / 2, Math.min(155, width / 2), width - Math.min(155, width / 2));
     const y = clamp((1 - this.anchor.y) * height / 2, height * .27, height * .63);
-    this.overlay.style.left = `${x}px`; this.overlay.style.top = `${y}px`;
+    this.overlay.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     this.overlay.style.opacity = this.reducedMotion ? String(1 - smooth(.75, 1, progress)) : String(fade);
     const rise = this.reducedMotion ? 0 : (level ? 15 : 5) - progress * (level ? 85 : 55);
     const scale = this.reducedMotion ? 1 : 1 - .14 * Math.exp(-time * 9) + (level > 2 ? .05 * Math.sin(Math.min(time * 5, Math.PI)) : 0);

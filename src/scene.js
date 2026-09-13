@@ -4,7 +4,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { CachedBokehPass } from './cached-bokeh.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { FXAAPass } from 'three/addons/postprocessing/FXAAPass.js';
@@ -63,21 +63,51 @@ function batchStatic(group) {
 }
 
 export class CabinetScene {
-  constructor(container, screen, { onAction, reducedMotion = false } = {}) {
-    this.container = container; this.screen = screen; this.onAction = onAction;
+  constructor(container, screen, { onAction, onInvalidate, reducedMotion = false } = {}) {
+    this.container = container; this.screen = screen; this.onAction = onAction; this.onInvalidate = onInvalidate;
+    this.dirty = true; this.renderSerial = 0; this.stats = { renders: 0, reflections: 0, depths: 0, shadows: 0 };
+    this.cameraOffset = new THREE.Vector3(); this.upAxis = new THREE.Vector3(0, 1, 0);
     this.reducedMotion = reducedMotion; this.mobile = innerWidth <= 900;
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color('#090b11'); this.scene.fog = new THREE.FogExp2('#0a0b10', .065);
     this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance', alpha: false });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.mobile ? 1.5 : 1.75));
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false; this.renderer.shadowMap.needsUpdate = true;
+    this.renderer.info.autoReset = false;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .95;
     container.appendChild(this.renderer.domElement);
     this.camera = new THREE.PerspectiveCamera(34, 1, .1, 45);
     this.buttons = []; this.presses = []; this.yaw = 0; this.targetYaw = 0; this.pointer = new THREE.Vector2(); this.raycaster = new THREE.Raycaster();
     this.env(); this.materials(); this.room(); this.cabinet(); this.lights(); this.post(); this.events(); this.resize();
     this.effects = new WinEffects(this.scene, this.camera, document.getElementById('payout-float'), reducedMotion);
+    this.grain();
     this.frameCount = 0; this.lastFrame = 0; this.frameTotal = 0; this.qualityAdjusted = false;
   }
+  grain() {
+    // A small, cached noise tile moves on the compositor. It does not require
+    // rendering the room, reflections, depth of field and bloom at every idle tick.
+    const tile = document.createElement('canvas'); tile.width = tile.height = 256;
+    const ctx = tile.getContext('2d'), data = ctx.createImageData(256, 256);
+    let seed = 7351;
+    for (let i = 0; i < data.data.length; i += 4) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      data.data[i] = data.data[i + 1] = data.data[i + 2] = seed >>> 24;
+      data.data[i + 3] = 255;
+    }
+    ctx.putImageData(data, 0, 0);
+    this.grainLayer = document.createElement('div'); this.grainLayer.className = 'film-grain';
+    this.grainLayer.setAttribute('aria-hidden', 'true');
+    this.grainLayer.style.backgroundImage = `url(${tile.toDataURL()})`;
+    this.container.appendChild(this.grainLayer);
+  }
+  invalidate({ depth = false, shadows = false } = {}) {
+    this.dirty = true;
+    if (depth) this.bokeh.depthNeedsUpdate = true;
+    if (shadows) this.renderer.shadowMap.needsUpdate = true;
+    this.onInvalidate?.();
+  }
+  get animating() { return Math.abs(this.targetYaw - this.yaw) > .00001 || this.presses.length > 0 || !!this.effects.config; }
+  rest() { this.lastFrame = 0; this.lastAnimationTime = null; }
   env() {
     const environment = new RoomEnvironment();
     // Half-float PMREM captures an HDR room locally; no fragile external HDR file.
@@ -202,6 +232,15 @@ export class CabinetScene {
     box(room, 15, .035, 4.8, stone, 0, .005, -1.4, .008);
     this.reflector = new Reflector(new THREE.PlaneGeometry(15, 4.8), { clipBias: .003, textureWidth: this.mobile ? 384 : 768, textureHeight: this.mobile ? 384 : 768, color: 0x393039, multisample: 0 });
     this.reflector.rotation.x = -PI / 2; this.reflector.position.set(0, .026, -1.4); this.scene.add(this.reflector);
+    const reflect = this.reflector.onBeforeRender;
+    let reflectedFrame = -1;
+    this.reflector.onBeforeRender = (renderer, scene, camera, ...args) => {
+      // Glass transmission and the depth pass revisit this mesh. Only the
+      // first color visit needs a fresh reflection of the same scene/camera.
+      if (scene.overrideMaterial || reflectedFrame === this.renderSerial) return;
+      reflectedFrame = this.renderSerial; this.stats.reflections++;
+      reflect.call(this.reflector, renderer, scene, camera, ...args);
+    };
     this.reflector.material.fragmentShader = this.reflector.material.fragmentShader.replace('gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );', 'gl_FragColor = vec4( blendOverlay( base.rgb, color ) * 0.36, 1.0 );');
     for (let x = -7; x < 8; x += 1.2) box(room, .009, .002, 4.8, black, x, .029, -1.4, .001);
     for (let z = -3.8; z <= 1; z += 1.2) box(room, 15, .002, .009, black, 0, .03, z, .001);
@@ -258,15 +297,16 @@ export class CabinetScene {
   post() {
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bokeh = new BokehPass(this.scene, this.camera, { focus: 8.1, aperture: .00125, maxblur: .009 }); this.composer.addPass(this.bokeh);
+    this.bokeh = new CachedBokehPass(this.scene, this.camera, { focus: 8.1, aperture: .00125, maxblur: .009 }); this.composer.addPass(this.bokeh);
     this.bloom = new UnrealBloomPass(new THREE.Vector2(800, 600), .23, .45, 1.3); this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.composer.addPass(new FXAAPass());
-    this.film = new ShaderPass({ uniforms: { tDiffuse: { value: null }, time: { value: 0 } }, vertexShader: 'varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}', fragmentShader: 'uniform sampler2D tDiffuse; uniform float time; varying vec2 vUv; void main(){vec3 c=texture2D(tDiffuse,vUv).rgb; float n=fract(sin(dot(vUv+mod(time,10.0),vec2(12.9898,78.233)))*43758.5453)-0.5; c+=n*0.016; float vig=1.0-0.25*pow(length((vUv-0.5)*1.25),2.0); gl_FragColor=vec4(c*vig,1.0);}' });
+    this.film = new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}', fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){vec3 c=texture2D(tDiffuse,vUv).rgb; float vig=1.0-0.25*pow(length((vUv-0.5)*1.25),2.0); gl_FragColor=vec4(c*vig,1.0);}' });
     this.composer.addPass(this.film);
   }
   resize() {
     const w = this.container.clientWidth, h = this.container.clientHeight; this.mobile = w <= 900;
+    this.width = w; this.height = h;
     this.renderer.setSize(w, h); this.composer.setSize(w, h); this.camera.aspect = w / h;
     this.camera.fov = this.mobile ? 38 : 33;
     this.baseCamera = this.mobile ? new THREE.Vector3(1.9, 2.7, 8.35) : new THREE.Vector3(3.1, 2.9, 7.5);
@@ -285,13 +325,14 @@ export class CabinetScene {
     this.camera.position.copy(this.baseCamera); this.camera.lookAt(this.lookAt); this.camera.updateProjectionMatrix();
     this.bokeh.uniforms.aspect.value = w / h;
     this.bokeh.uniforms.focus.value = this.camera.position.distanceTo(new THREE.Vector3(0, 1.9, .5));
+    this.invalidate({ depth: true });
   }
   events() {
     window.addEventListener('resize', () => this.resize());
     const canvas = this.renderer.domElement;
     canvas.addEventListener('pointerdown', event => { this.drag = { x: event.clientX, y: event.clientY, yaw: this.targetYaw, moved: false, id: event.pointerId }; canvas.setPointerCapture(event.pointerId); });
     canvas.addEventListener('pointermove', event => {
-      if (this.drag) { const delta = event.clientX - this.drag.x; if (Math.abs(delta) + Math.abs(event.clientY - this.drag.y) > 6) this.drag.moved = true; this.targetYaw = THREE.MathUtils.clamp(this.drag.yaw - delta * .0025, -.4, .32); }
+      if (this.drag) { const delta = event.clientX - this.drag.x; if (Math.abs(delta) + Math.abs(event.clientY - this.drag.y) > 6) this.drag.moved = true; this.targetYaw = THREE.MathUtils.clamp(this.drag.yaw - delta * .0025, -.4, .32); this.onInvalidate?.(); }
       else { const hit = this.hit(event); canvas.style.cursor = hit ? 'pointer' : 'grab'; }
     });
     canvas.addEventListener('pointerup', event => {
@@ -306,14 +347,24 @@ export class CabinetScene {
     const bounds = this.renderer.domElement.getBoundingClientRect(); this.pointer.set((event.clientX - bounds.left) / bounds.width * 2 - 1, -(event.clientY - bounds.top) / bounds.height * 2 + 1);
     this.raycaster.setFromCamera(this.pointer, this.camera); return this.raycaster.intersectObjects(this.buttons, false)[0]?.object;
   }
-  press(button = this.buttons.at(-1)) { this.presses.push({ button, start: performance.now() }); }
+  press(button = this.buttons.at(-1)) { this.presses.push({ button, start: performance.now() }); this.onInvalidate?.(); }
   render(now) {
     if (this.lost) return;
-    this.yaw += (this.targetYaw - this.yaw) * .08;
-    const position = this.baseCamera.clone().sub(this.lookAt).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw).add(this.lookAt);
+    const cameraMoving = Math.abs(this.targetYaw - this.yaw) > .00001;
+    const elapsed = this.lastAnimationTime == null ? 1000 / 60 : Math.min(100, now - this.lastAnimationTime);
+    this.lastAnimationTime = now;
+    if (cameraMoving) {
+      this.yaw += (this.targetYaw - this.yaw) * (1 - Math.pow(.92, elapsed / (1000 / 60)));
+      if (Math.abs(this.targetYaw - this.yaw) <= .00001) this.yaw = this.targetYaw;
+      this.dirty = true; this.bokeh.depthNeedsUpdate = true;
+    }
+    const position = this.cameraOffset.copy(this.baseCamera).sub(this.lookAt).applyAxisAngle(this.upAxis, this.yaw).add(this.lookAt);
     this.camera.position.copy(position); this.camera.lookAt(this.lookAt);
     this.camera.updateMatrixWorld();
-    this.effects.update(now, this.container.clientWidth, this.container.clientHeight);
+    const animatedGeometry = this.effects.group.visible;
+    this.effects.update(now, this.width, this.height);
+    if (animatedGeometry || this.effects.group.visible) { this.dirty = true; this.bokeh.depthNeedsUpdate = true; }
+    if (this.presses.length) { this.dirty = true; this.bokeh.depthNeedsUpdate = true; this.renderer.shadowMap.needsUpdate = true; }
     for (const press of this.presses) {
       const t = (now - press.start) / 220, amount = Math.sin(Math.min(t, 1) * PI) * .024;
       press.button.position.y = press.button.userData.restY - amount;
@@ -323,13 +374,20 @@ export class CabinetScene {
     this.m.orange.emissiveIntensity = 2.3 + this.effects.energy * 1.2;
     this.faceLight.intensity = 4.5 + this.effects.energy * 6;
     this.bloom.strength = .23 + this.effects.energy * .2;
-    this.film.uniforms.time.value = this.reducedMotion ? 0 : now * .001;
+    if (this.screen.texture.version !== this.screenVersion) { this.dirty = true; this.screenVersion = this.screen.texture.version; }
+    if (!this.dirty) return false;
+    this.renderSerial++; this.stats.renders++;
+    if (this.bokeh.depthNeedsUpdate) this.stats.depths++;
+    if (this.renderer.shadowMap.needsUpdate) this.stats.shadows++;
+    this.renderer.info.reset();
     this.composer.render();
-    if (this.lastFrame && this.frameCount < 90) { this.frameTotal += now - this.lastFrame; this.frameCount++; }
+    this.dirty = false;
+    if (this.lastFrame && now - this.lastFrame < 100 && this.frameCount < 90) { this.frameTotal += now - this.lastFrame; this.frameCount++; }
     this.lastFrame = now;
     if (this.frameCount === 90 && !this.qualityAdjusted) {
       this.qualityAdjusted = true;
       if (this.frameTotal / 90 > 40) { this.renderer.setPixelRatio(1); this.composer.setPixelRatio(1); this.resize(); }
     }
+    return true;
   }
 }

@@ -35,9 +35,11 @@ The cabinet is modeled as full 3D geometry, including sculpted side panels, uppe
 
 The scene uses a locally generated half-float HDR room environment and PMREM image-based lighting, physically based materials, shadows, planar floor reflections, depth of field, bloom, antialiasing, and subtle grain. Canvas-generated screen artwork and material textures need no asset downloads. Static geometry is batched by material and rendering resolution adapts to slower devices.
 
+The 3D renderer sleeps when the room is still and wakes for spins, camera movement, button presses, effects, or resizing. Film grain animates separately on a cached compositor layer. Static shadow and depth maps are reused, and each rendered frame updates its reflection only once. Geometry, materials, reflection resolution, depth-of-field settings, bloom, and payout effects retain their existing quality.
+
 Completed spins show a floating gold payout or a red lost stake. Win celebrations scale with the total payout divided by the stake: below 5× gets sparks, 5× adds a coin shower, 10× adds overhead light beams, 25× expands the beams and floor rings, and 100× or five sevens triggers the full jackpot celebration. Speciala adds orbiting 3D gold stars. Effects use reusable particle and geometry pools, with fewer particles on mobile; they fade out automatically and clear when starting another spin or leaving.
 
-Web Audio synthesizes plastic clacks, motor noise, staggered reel-stop thumps, arcade win tones, coins, and receipt sounds. Sound starts after user interaction; background tabs suspend audio and rendering. Reduced-motion preferences shorten spins, show stationary payout labels, and suppress particles, beams, flying stars, and animated grain.
+Web Audio synthesizes plastic clacks, motor noise, staggered reel-stop thumps, arcade win tones, coins, and receipt sounds. Sound starts after user interaction, sleeps once all sound tails finish, and wakes on the next interaction. Background tabs suspend audio and rendering. Reduced-motion preferences shorten spins, show stationary payout labels, and suppress particles, beams, flying stars, and animated grain.
 
 ## Verify
 
@@ -47,6 +49,8 @@ npm run test:browser
 ```
 
 Browser tests use locally installed Google Chrome. They verify accounting in the UI, interaction locks, physical button raycasting, camera dragging, touch controls, mobile/tablet/landscape layouts, receipt/restart, modal keyboard behavior, audio activation, fullscreen, and completely offline operation. Unit tests cover payouts, invalid input, exhausted balances, settlement idempotence, and 10,000 rounds of accounting invariants.
+
+Performance checks also cover idle rendering, shadow/depth cache invalidation, audio sleep, and resuming a spin after a background-tab transition. Run `node scripts/measure-performance.mjs` after building to measure idle, spin, camera, and Speciala workloads in Chrome; results go to `test-results/performance.json`. Optional arguments select a saved HTML build and output JSON, allowing the same benchmark to compare two versions. Measurements and limitations are recorded in [docs/performance.md](docs/performance.md).
 
 ## Publish
 

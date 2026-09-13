@@ -29,7 +29,9 @@ footer{pointer-events:none}
 .banter .banter-credit{display:block;margin-top:7px;font-size:10px;letter-spacing:1.2px;color:#9a948a}
 .maker-credit{pointer-events:auto;font-size:10px;letter-spacing:.25px;color:#9a948a;text-decoration:none}
 .maker-credit:hover{color:var(--gold)}
-.payout-float{position:absolute;z-index:1;pointer-events:none;user-select:none;width:max-content;max-width:calc(100% - 28px);will-change:opacity}
+.payout-float{position:absolute;left:0;top:0;z-index:1;pointer-events:none;user-select:none;width:max-content;max-width:calc(100% - 28px);will-change:opacity,transform}
+.film-grain{position:absolute;inset:-128px;pointer-events:none;opacity:.035;mix-blend-mode:soft-light;background-repeat:repeat;will-change:transform;animation:film-grain .333s steps(1) infinite}
+@keyframes film-grain{0%,100%{transform:translate(0,0)}12.5%{transform:translate(-39px,63px)}25%{transform:translate(71px,-21px)}37.5%{transform:translate(-87px,-53px)}50%{transform:translate(19px,91px)}62.5%{transform:translate(101px,37px)}75%{transform:translate(-61px,11px)}87.5%{transform:translate(43px,-79px)}}
 .payout-float[hidden]{display:none}
 .payout-card{position:relative;display:flex;flex-direction:column;align-items:center;white-space:nowrap;will-change:transform;padding:18px 28px;text-align:center;isolation:isolate}
 .payout-card::before{content:"";position:absolute;inset:-35px -55px;z-index:-1;background:radial-gradient(ellipse,#211307c9 0%,#20100488 33%,transparent 69%)}

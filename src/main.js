@@ -11,6 +11,7 @@ const sound = new CabinetAudio();
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const format = new Intl.NumberFormat('ro-RO');
 let scene, screen, ready = false, lastPaint = 0;
+let frameRequest = null;
 let startedWallTime = null, pendingCashout = false;
 const quips = {
   spin: ['Hai cu șeptarii!', 'Ultima gheară. Pe cuvânt.', 'Mai dau o gheară și mă duc.', 'L-am mirosit. Acum dă.', 'Îmi scot banii și plec.', 'Hai că poți!'],
@@ -56,14 +57,14 @@ async function spin() {
   scene.effects.clear();
   startedWallTime ??= Date.now();
   scene.press(); sound.startSpin(); screen.start(result, performance.now(), reducedMotion);
-  say(pick(quips.spin)); sync();
+  say(pick(quips.spin)); sync(); requestRender();
 }
 async function bet() {
   if (!ready || game.pending) return;
   await sound.unlock().catch(() => {}); if (!game.cycleBet()) return;
   sound.clack(); scene.press(scene.buttons[0]);
   say(game.bet === 50 ? 'Bagă mare sau mergi acasa!' : game.bet === 20 ? `Dublu sau nimic.`: `Bani de cafea.`);
-  sync(); screen.draw(performance.now(), game);
+  sync(); screen.draw(performance.now(), game); requestRender();
 }
 function finishSpin() {
   const result = game.settle(); if (!result) return;
@@ -84,6 +85,7 @@ function finishSpin() {
 function showReceipt(comment) {
   if (game.pending) { pendingCashout = true; return; }
   scene?.effects.clear();
+  scene?.invalidate({ depth: true });
   const elapsed = startedWallTime ? Math.max(1, Math.round((Date.now() - startedWallTime) / 1000)) : 0;
   $('receipt-spins').textContent = game.spins;
   $('receipt-time').textContent = elapsed < 60 ? `${elapsed} sec` : `${Math.floor(elapsed / 60)} min ${elapsed % 60} sec`;
@@ -129,6 +131,7 @@ $('restart').addEventListener('click', () => {
   game.reset(); startedWallTime = null; scene.effects.clear();
   screen.result = null; $('receipt-dialog').close();
   say('Mai bag o fisă. De data asta sigur plec.'); sync(); screen.draw(performance.now(), game);
+  scene.invalidate({ depth: true });
 });
 document.addEventListener('keydown', event => {
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -139,31 +142,42 @@ document.addEventListener('keydown', event => {
   if (event.code === 'KeyF') toggleFullscreen();
 });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) sound.context?.suspend().catch(() => {});
-  else if (sound.context && sound.enabled) sound.context.resume().catch(() => {});
+  if (scene) scene.grainLayer.style.animationPlayState = document.hidden ? 'paused' : '';
+  if (document.hidden) {
+    if (frameRequest !== null) cancelAnimationFrame(frameRequest);
+    frameRequest = null; scene?.rest(); sound.context?.suspend().catch(() => {});
+  } else {
+    if (sound.context && sound.enabled && (sound.activeVoices || game.pending)) sound.context.resume().catch(() => {});
+    scene?.invalidate();
+  }
 });
+function requestRender() {
+  if (frameRequest === null && ready && !document.hidden && !scene.lost) frameRequest = requestAnimationFrame(frame);
+}
 function frame(now) {
-  requestAnimationFrame(frame);
+  frameRequest = null;
   if (!ready || document.hidden || scene.lost) return;
   if (screen.animation && now - lastPaint > (scene.mobile ? 28 : 16)) {
     lastPaint = now;
     if (screen.draw(now, game, index => sound.reelStop(index))) finishSpin();
   }
   scene.render(now);
+  if (screen.animation || scene.animating || scene.dirty) requestRender();
+  else scene.rest();
 }
 async function init() {
   say($('banter').textContent);
   try {
     screen = new Screen(); screen.draw(0, game);
-    scene = new CabinetScene($('scene'), screen, { reducedMotion, onAction: action => ({ spin, bet, cashout: showReceipt })[action]?.() });
+    scene = new CabinetScene($('scene'), screen, { reducedMotion, onInvalidate: requestRender, onAction: action => ({ spin, bet, cashout: showReceipt })[action]?.() });
     await scene.renderer.compileAsync(scene.scene, scene.camera);
     scene.render(performance.now()); ready = true; sync();
     $('loading').classList.add('done'); $('loading').setAttribute('aria-hidden', 'true');
     setTimeout(() => $('loading').remove(), reducedMotion ? 0 : 800);
-    requestAnimationFrame(frame);
+    scene.rest();
     // Read-only diagnostics support render/performance and physical-button QA.
     Object.defineProperty(window, '__pacanele', { value: {
-      get state() { return { credit: game.credit, bet: game.bet, spins: game.spins, lastWin: game.lastWin, totalBet: game.totalBet, totalWon: game.totalWon, pending: !!game.pending, grid: screen.grid, result: screen.result, sound: sound.enabled, audioState: sound.context?.state, ready, drawCalls: scene.renderer.info.render.calls, pixelRatio: scene.renderer.getPixelRatio(), reducedMotion, effects: scene.effects.state }; },
+      get state() { return { credit: game.credit, bet: game.bet, spins: game.spins, lastWin: game.lastWin, totalBet: game.totalBet, totalWon: game.totalWon, pending: !!game.pending, grid: screen.grid, result: screen.result, sound: sound.enabled, audioState: sound.context?.state, ready, drawCalls: scene.renderer.info.render.calls, pixelRatio: scene.renderer.getPixelRatio(), reducedMotion, effects: scene.effects.state, rendering: { ...scene.stats, scheduled: frameRequest !== null, yaw: scene.yaw, targetYaw: scene.targetYaw } }; },
       buttonPoints() { return scene.buttons.map(button => { const p = button.getWorldPosition(new THREE.Vector3()); p.project(scene.camera); return { action: button.userData.action, x: (p.x + 1) * .5 * scene.container.clientWidth, y: (1 - p.y) * .5 * scene.container.clientHeight }; }); },
     } });
   } catch (error) {
