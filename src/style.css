@@ -53,9 +53,9 @@ footer{pointer-events:none}
 .spin-dot[data-outcome="loss"]{border-style:solid;border-color:#b58d82;background:transparent}
 /* The cabinet can sit behind this row on short phones or after a camera drag. */
 @media(max-width:900px){
-  .machine-caption{width:max-content;max-width:calc(100% - 24px);margin-inline:auto;padding:7px 12px;gap:8px;border:1px solid #ffffff21;border-radius:999px;background:var(--bg);color:#d8d1c4;font-size:8px;letter-spacing:1px;pointer-events:none}
+  .machine-caption{width:270px;max-width:calc(100% - 24px);margin-inline:auto;padding:7px 12px;gap:8px;border:1px solid #ffffff21;border-radius:999px;background:var(--bg);color:#d8d1c4;font-size:8px;letter-spacing:1px;pointer-events:none}
   .machine-caption .live-dot{flex-shrink:0}
-  .machine-caption #machine-state{font-size:10px;color:#c3baaa}
+  .machine-caption #machine-state{flex:1;min-width:0;text-align:center;font-size:10px;color:#c3baaa}
 }
 @media(max-width:900px) and (min-height:531px){
   .controls{bottom:62px}.banter{bottom:225px}
