@@ -13,6 +13,9 @@
   <main id="experience" aria-label="Păcănele, simulator satiric de aparat cu bani imaginari">
     <div id="scene" role="img" aria-label="Un aparat de păcănele întreg, într-o sală întunecată. Poți apăsa butoanele aparatului sau comenzile de mai jos."></div>
     <div class="vignette" aria-hidden="true"></div>
+    <div id="payout-float" class="payout-float" aria-hidden="true" hidden>
+      <div class="payout-card"><span class="payout-label"></span><strong class="payout-amount"></strong><span class="payout-unit">LEI</span></div>
+    </div>
     <header class="header">
       <a class="wordmark" href="./" aria-label="Păcănele, de la început">păcănele<span>®</span></a>
       <div class="edition"><i></i> CLUJ-NAPOCA <span>·</span> EDIȚIA DE ADIO</div>
@@ -23,22 +26,31 @@
       </nav>
     </header>
     <section class="intro" aria-label="Ultima gheară">
-      <p class="eyebrow"><span></span> SALA S-A ÎNCHIS. PĂCĂNELELE NU MOR NICIODATĂ.</p>
+      <p class="eyebrow"><span></span> SALA S-A DUS. PĂCĂNELELE RĂMÂN <em>în suflet</em></p>
       <h1>Ultima <br><em>gheară.</em></h1>
       <p class="intro-copy">Pentru cei care le duc dorul.</p>
     </section>
-    <div class="machine-caption"><span class="live-dot"></span> APARATUL 007 <span class="caption-separator">/</span> <span id="machine-state" role="status">În așteptare</span></div>
+    <div class="machine-caption">
+      <span class="live-dot"></span> APARATUL 007 <span class="caption-separator">/</span> <span id="machine-state" role="status">În așteptare</span>
+      <span id="spin-history" class="spin-history" role="img" aria-label="Nicio rotire încheiată." title="Ultimele 5 rotiri, de la stânga la dreapta: vechi → noi. Plin: câștig. Contur: pierdere.">
+        <span class="spin-dot" data-outcome="empty" aria-hidden="true"></span>
+        <span class="spin-dot" data-outcome="empty" aria-hidden="true"></span>
+        <span class="spin-dot" data-outcome="empty" aria-hidden="true"></span>
+        <span class="spin-dot" data-outcome="empty" aria-hidden="true"></span>
+        <span class="spin-dot" data-outcome="empty" aria-hidden="true"></span>
+      </span>
+    </div>
     <div class="banter" aria-live="polite" aria-atomic="true"><span class="quote-mark">“</span><p id="banter">Mai dau o gheară și plec.</p><span class="banter-credit"></span></div>
     <p id="outcome" role="status" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap"></p>
     <div class="orbit-hint" aria-hidden="true"><span>↔</span> Trage ca să te uiți în jur</div>
     <section class="controls" aria-label="Comenzile aparatului">
-      <div class="wallet"><span class="control-label">BUZUNAR VIRTUAL</span><div><strong id="credit">200</strong><span>LEI</span></div><small id="balance">Pe zero. Deocamdată.</small></div>
+      <div class="wallet"><span class="control-label">PORTOFEL VIRTUAL</span><div><strong id="credit">200</strong><span>LEI</span></div><small id="balance">Pe zero. Deocamdată.</small></div>
       <div class="control-divider"></div>
       <button id="bet" class="bet-control" aria-label="Schimbă miza, acum 10 lei"><span class="control-label">MIZĂ <span>↻</span></span><span><strong id="bet-value">10</strong> <small>LEI</small></span></button>
       <button id="spin" class="spin-button" disabled><span class="spin-symbol">↻</span><span id="spin-label">Se încălzește…</span><kbd>SPAȚIU</kbd></button>
       <button id="cashout" class="cashout">Îmi scot banii și plec <span>↗</span></button>
     </section>
-    <footer><a class="maker-credit" href="https://x.com/danmana" target="_blank" rel="noopener noreferrer">Făcut la mișto de @danmana și GPT Astra</a><span>Banii sunt imaginari. Timpul tău, nu.</span><span class="footer-year">CLUJ, 2026</span></footer>
+    <footer><a class="maker-credit" href="https://x.com/danmana" target="_blank" rel="noopener noreferrer">Făcut la mișto de @danmana și GPT Astra</a><span>Aparat fără vrăjeală</span><span class="footer-year">CLUJ, 2026</span></footer>
     <div id="loading" class="loading" role="status"><span class="loader-seven">7</span><p>Se încălzește aparatul<span>…</span></p></div>
     <div id="webgl-error" class="error-panel" hidden><h2>Aparatul e rece.</h2><p>Browserul nu a putut porni grafica 3D. Activează accelerarea hardware sau încearcă un browser actualizat.</p><button onclick="location.reload()">Mai încerc o dată</button></div>
     <noscript><div class="error-panel"><h2>Aparatul are nevoie de JavaScript.</h2><p>Activează JavaScript ca să intri în sală.</p></div></noscript>
@@ -46,7 +58,7 @@
   <dialog id="about-dialog" aria-labelledby="about-title">
     <button class="dialog-close" data-close aria-label="Închide">×</button>
     <p class="eyebrow">FĂRĂ DEPOZITE. FĂRĂ RETRAGERI. FĂRĂ SCHEME.</p>
-    <h2 id="about-title">Casa câștigă.<br><em>Aici, doar o glumă.</em></h2>
+    <h2 id="about-title">Sălile se închid<br><em>Dar păcănelele rămân în suflet și online</em></h2>
     <p>Clujul își ia adio de la păcănele. Noi am păstrat un aparat virtual pentru o ultimă gheară. Primești 200 de lei imaginari. Nu poți cumpăra credite și nu poți câștiga bani reali.</p>
     <p>Apasă butonul galben, butoanele aparatului sau tasta <kbd>Spațiu</kbd>. Miza se schimbă între 10, 20 și 50 de lei. Trage de scenă pentru a privi aparatul din alt unghi.</p>
     <h3>Ce dă linie?</h3>
@@ -58,7 +70,7 @@
   <dialog id="receipt-dialog" class="receipt-dialog" aria-labelledby="receipt-title">
     <button class="dialog-close" data-close aria-label="Înapoi la aparat">×</button>
     <p class="eyebrow">APARATUL 007 · BON DE REALITATE</p>
-    <h2 id="receipt-title">Ai spart<br><em>timpul.</em></h2>
+    <h2 id="receipt-title">Ai câștigat <br><em>timp.</em></h2>
     <p id="receipt-comment">Bine că n-au fost bani adevărați.</p>
     <dl class="receipt-stats"><div><dt>Gheare date</dt><dd id="receipt-spins">0</dd></div><div><dt>Timp la aparat</dt><dd id="receipt-time">0 sec</dd></div><div><dt>Ai intrat cu</dt><dd>200 lei imaginari</dd></div><div><dt>Ai ieșit cu</dt><dd id="receipt-credit">200 lei imaginari</dd></div><div class="receipt-total"><dt>Bani reali pierduți</dt><dd>0 LEI</dd></div></dl>
     <p class="receipt-moral">Cel mai bun câștig?<br>Să poți pleca oricând.</p>

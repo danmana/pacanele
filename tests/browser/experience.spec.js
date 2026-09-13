@@ -148,6 +148,50 @@ test('zero credits ends the session only after the last spin settles', async ({ 
   await expect(page.locator('#machine-state')).toHaveText('În așteptare');
 });
 
+test('spin history shows the last five completed outcomes in order and clears on restart', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => {
+    let draws = 0;
+    const outcomes = 'WLWLLW', losingDraws = [0, .3, .5, .7, .85];
+    crypto.getRandomValues = buffer => {
+      for (let i = 0; i < buffer.length; i++) {
+        const value = outcomes[Math.floor(draws / 15)] === 'W' ? 0 : losingDraws[draws % 5];
+        buffer[i] = Math.floor(value * 4294967296); draws++;
+      }
+      return buffer;
+    };
+  });
+  await ready(page);
+  const history = page.locator('#spin-history');
+  const dots = history.locator('.spin-dot');
+  const displayed = () => dots.evaluateAll(elements => elements.map(element => element.dataset.outcome));
+  let expected = Array(5).fill('empty');
+  await expect(dots).toHaveCount(5);
+  expect(await displayed()).toEqual(expected);
+  await expect(history).toHaveAttribute('aria-label', 'Nicio rotire încheiată.');
+  for (const outcome of ['win', 'loss', 'win', 'loss', 'loss', 'win']) {
+    await page.locator('#spin').click();
+    await expect(page.locator('#spin')).toBeDisabled();
+    expect(await displayed()).toEqual(expected);
+    await settled(page);
+    expected = [...expected.slice(1), outcome];
+    expect(await displayed()).toEqual(expected);
+  }
+  await expect(history).toHaveAttribute('aria-label', 'Ultimele 5 rotiri, de la cea mai veche la cea mai recentă: pierdere, câștig, pierdere, pierdere, câștig.');
+  await expect(page.locator('#machine-state')).toHaveText('Se dezmorțește');
+  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }, { width: 320, height: 568 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(viewport);
+    const bounds = await history.boundingBox();
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+    await page.screenshot({ path: `test-results/history-${viewport.width}.png` });
+  }
+  await page.locator('#cashout').click();
+  await page.locator('#restart').click();
+  expect(await displayed()).toEqual(Array(5).fill('empty'));
+  await expect(history).toHaveAttribute('aria-label', 'Nicio rotire încheiată.');
+});
+
 test('phrase attributions survive reloads and the maker link is tappable on mobile', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await ready(page);

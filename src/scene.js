@@ -11,6 +11,7 @@ import { FXAAPass } from 'three/addons/postprocessing/FXAAPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { canvasTexture, createMarquee, noiseTexture, carpetTexture, rounded } from './textures.js';
+import { WinEffects } from './celebration.js';
 
 const PI = Math.PI;
 function mesh(parent, geometry, material, x = 0, y = 0, z = 0) {
@@ -74,6 +75,7 @@ export class CabinetScene {
     this.camera = new THREE.PerspectiveCamera(34, 1, .1, 45);
     this.buttons = []; this.presses = []; this.yaw = 0; this.targetYaw = 0; this.pointer = new THREE.Vector2(); this.raycaster = new THREE.Raycaster();
     this.env(); this.materials(); this.room(); this.cabinet(); this.lights(); this.post(); this.events(); this.resize();
+    this.effects = new WinEffects(this.scene, this.camera, document.getElementById('payout-float'), reducedMotion);
     this.frameCount = 0; this.lastFrame = 0; this.frameTotal = 0; this.qualityAdjusted = false;
   }
   env() {
@@ -305,19 +307,22 @@ export class CabinetScene {
     this.raycaster.setFromCamera(this.pointer, this.camera); return this.raycaster.intersectObjects(this.buttons, false)[0]?.object;
   }
   press(button = this.buttons.at(-1)) { this.presses.push({ button, start: performance.now() }); }
-  render(now, winning = false) {
+  render(now) {
     if (this.lost) return;
     this.yaw += (this.targetYaw - this.yaw) * .08;
     const position = this.baseCamera.clone().sub(this.lookAt).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw).add(this.lookAt);
     this.camera.position.copy(position); this.camera.lookAt(this.lookAt);
+    this.camera.updateMatrixWorld();
+    this.effects.update(now, this.container.clientWidth, this.container.clientHeight);
     for (const press of this.presses) {
       const t = (now - press.start) / 220, amount = Math.sin(Math.min(t, 1) * PI) * .024;
       press.button.position.y = press.button.userData.restY - amount;
       press.button.userData.print.position.y = press.button.userData.printY - amount;
     }
     this.presses = this.presses.filter(press => now - press.start < 220);
-    this.m.orange.emissiveIntensity = winning && !this.reducedMotion ? 2.7 + Math.sin(now * .006) * .6 : 2.3;
-    this.faceLight.intensity = winning ? 6.5 : 4.5;
+    this.m.orange.emissiveIntensity = 2.3 + this.effects.energy * 1.2;
+    this.faceLight.intensity = 4.5 + this.effects.energy * 6;
+    this.bloom.strength = .23 + this.effects.energy * .2;
     this.film.uniforms.time.value = this.reducedMotion ? 0 : now * .001;
     this.composer.render();
     if (this.lastFrame && this.frameCount < 90) { this.frameTotal += now - this.lastFrame; this.frameCount++; }

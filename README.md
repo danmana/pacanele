@@ -35,7 +35,9 @@ The cabinet is modeled as full 3D geometry, including sculpted side panels, uppe
 
 The scene uses a locally generated half-float HDR room environment and PMREM image-based lighting, physically based materials, shadows, planar floor reflections, depth of field, bloom, antialiasing, and subtle grain. Canvas-generated screen artwork and material textures need no asset downloads. Static geometry is batched by material and rendering resolution adapts to slower devices.
 
-Web Audio synthesizes plastic clacks, motor noise, staggered reel-stop thumps, arcade win tones, coins, and receipt sounds. Sound starts after user interaction; background tabs suspend audio and rendering. Reduced-motion preferences shorten spins and remove flashing trim and animated grain.
+Completed spins show a floating gold payout or a red lost stake. Win celebrations scale with the total payout divided by the stake: below 5× gets sparks, 5× adds a coin shower, 10× adds overhead light beams, 25× expands the beams and floor rings, and 100× or five sevens triggers the full jackpot celebration. Speciala adds orbiting 3D gold stars. Effects use reusable particle and geometry pools, with fewer particles on mobile; they fade out automatically and clear when starting another spin or leaving.
+
+Web Audio synthesizes plastic clacks, motor noise, staggered reel-stop thumps, arcade win tones, coins, and receipt sounds. Sound starts after user interaction; background tabs suspend audio and rendering. Reduced-motion preferences shorten spins, show stationary payout labels, and suppress particles, beams, flying stars, and animated grain.
 
 ## Verify
 

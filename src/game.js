@@ -75,7 +75,7 @@ export class Game {
     if (!this.pending) return null;
     const result = this.pending;
     this.credit += result.payout; this.totalWon += result.payout;
-    this.recentOutcomes = (this.recentOutcomes + (result.payout > 0 ? 'W' : 'L')).slice(-4);
+    this.recentOutcomes = (this.recentOutcomes + (result.payout > 0 ? 'W' : 'L')).slice(-5);
     this.lastWin = result.payout; this.pending = null;
     return result;
   }

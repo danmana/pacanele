@@ -18,7 +18,7 @@ test('machine state follows every specified sequence, with four-spin extremes ta
 });
 test('only settled spins affect machine state; history rolls forward and resets with a new session', () => {
   const game = new Game(() => 0);
-  for (let spin = 0; spin < 4; spin++) {
+  for (let spin = 0; spin < 5; spin++) {
     game.spin(); assert.equal(game.recentOutcomes, 'W'.repeat(spin));
     game.settle(); assert.equal(game.recentOutcomes, 'W'.repeat(spin + 1));
     game.settle(); assert.equal(game.recentOutcomes, 'W'.repeat(spin + 1));
@@ -26,7 +26,9 @@ test('only settled spins affect machine state; history rolls forward and resets 
   assert.equal(game.machineState, 'Fierbinte');
   let draw = 0; game.random = () => [0, .3, .5, .7, .85][draw++ % 5];
   game.spin(); assert.equal(game.machineState, 'Fierbinte'); game.settle();
-  assert.equal(game.recentOutcomes, 'WWWL'); assert.equal(game.machineState, 'Călduț');
+  assert.equal(game.recentOutcomes, 'WWWWL'); assert.equal(game.machineState, 'Călduț');
+  game.spin(); game.settle();
+  assert.equal(game.recentOutcomes, 'WWWLL'); assert.equal(game.machineState, 'Se răcește');
   game.reset(); assert.equal(game.recentOutcomes, ''); assert.equal(game.machineState, 'În așteptare');
 });
 test('only consecutive symbols from the left pay on three horizontal lines', () => {

@@ -10,7 +10,7 @@ const game = new Game();
 const sound = new CabinetAudio();
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const format = new Intl.NumberFormat('ro-RO');
-let scene, screen, ready = false, winningUntil = 0, lastPaint = 0;
+let scene, screen, ready = false, lastPaint = 0;
 let startedWallTime = null, pendingCashout = false;
 const quips = {
   spin: ['Hai cu șeptarii!', 'Ultima gheară. Pe cuvânt.', 'Mai dau o gheară și mă duc.', 'L-am mirosit. Acum dă.', 'Îmi scot banii și plec.', 'Hai că poți!'],
@@ -24,6 +24,13 @@ function say(value) {
 function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
 function sync() {
   $('machine-state').textContent = game.machineState;
+  const history = $('spin-history');
+  const outcomes = game.recentOutcomes.padStart(5, '-');
+  Array.from(history.children).forEach((dot, index) => {
+    dot.dataset.outcome = outcomes[index] === 'W' ? 'win' : outcomes[index] === 'L' ? 'loss' : 'empty';
+  });
+  const results = Array.from(game.recentOutcomes, outcome => outcome === 'W' ? 'câștig' : 'pierdere');
+  history.setAttribute('aria-label', results.length === 0 ? 'Nicio rotire încheiată.' : results.length === 1 ? `Ultima rotire: ${results[0]}.` : `Ultimele ${results.length} rotiri, de la cea mai veche la cea mai recentă: ${results.join(', ')}.`);
   $('credit').textContent = format.format(game.credit); $('bet-value').textContent = game.bet;
   $('bet').setAttribute('aria-label', `Schimbă miza, acum ${game.bet} lei`);
   const delta = game.credit - START_CREDIT;
@@ -40,12 +47,13 @@ async function spin() {
   await sound.unlock().catch(() => {});
   // Recheck after audio unlock: rapid clicks must never charge two spins.
   if (game.pending) return;
-  if (game.credit < BETS[0]) { showReceipt('Aparatul ți-a curățat buzunarul. Virtual.'); return; }
+  if (game.credit < BETS[0]) { showReceipt('Aparatul ți-a curățat portofelul. Virtual.'); return; }
   if (game.credit < game.bet) {
     while (game.credit < game.bet) game.cycleBet();
-    sync(); say(`Miza a coborât la ${game.bet}. Buzunarul a decis.`); return;
+    sync(); say(`N-ai destui bani, bagă și tu mai puțin: ${game.bet}`); return;
   }
   const result = game.spin(); if (!result) return;
+  scene.effects.clear();
   startedWallTime ??= Date.now();
   scene.press(); sound.startSpin(); screen.start(result, performance.now(), reducedMotion);
   say(pick(quips.spin)); sync();
@@ -61,25 +69,31 @@ function finishSpin() {
   const result = game.settle(); if (!result) return;
   sound.stopSpin();
   if (result.payout) {
-    sound.win(result.jackpot || result.bonus > 0); winningUntil = performance.now() + 3500;
+    sound.win(result.jackpot || result.bonus > 0 || result.payout / result.bet >= 10);
     say(result.jackpot ? 'L-am spart! Am spart banca!' : result.bonus ? 'Mi-a dat speciala!' : pick(quips.win));
   } else { sound.lose(); say(pick(quips.lose)); }
+  scene.effects.play(result, performance.now(), scene.mobile);
   sync(); screen.draw(performance.now(), game);
   $('outcome').textContent = `Gheara ${game.spins}. ${result.payout ? `Câștig: ${result.payout} lei imaginari.` : 'Nicio combinație câștigătoare.'} Credit rămas: ${game.credit} lei imaginari.`;
   if (pendingCashout) { pendingCashout = false; showReceipt(); }
   else if (game.credit === 0) {
     say('M-a curățat. Bine că erau imaginari.');
-    showReceipt('Aparatul ți-a curățat buzunarul. Virtual.');
+    showReceipt('Aparatul ți-a curățat portofelul. Virtual.');
   }
 }
 function showReceipt(comment) {
   if (game.pending) { pendingCashout = true; return; }
+  scene?.effects.clear();
   const elapsed = startedWallTime ? Math.max(1, Math.round((Date.now() - startedWallTime) / 1000)) : 0;
   $('receipt-spins').textContent = game.spins;
   $('receipt-time').textContent = elapsed < 60 ? `${elapsed} sec` : `${Math.floor(elapsed / 60)} min ${elapsed % 60} sec`;
   $('receipt-credit').textContent = `${format.format(game.credit)} lei imaginari`;
-  $('receipt-comment').textContent = comment || (game.credit > START_CREDIT ? 'Pe plus în joc. În viață, tot cu banii tăi.' : game.spins === 0 ? 'Ai plecat înainte să începi. Ai câștigat timp.' : 'Bine că n-au fost bani adevărați.');
-  $('receipt-title').innerHTML = game.spins === 0 ? 'Ai câștigat<br><em>timp.</em>' : 'Ai spart<br><em>timpul.</em>';
+  $('receipt-comment').textContent = comment || (game.credit > START_CREDIT ? 'Pe plus în joc. Păcat că nu-s bani reali.' : game.spins === 0 ? 'Ai plecat înainte să începi. Ai câștigat timp.' : 'Bine că n-au fost bani adevărați.');
+  $('receipt-title').innerHTML = game.credit === 0 ? 'Te-a <br><em>curentat.</em>'
+    : game.credit < START_CREDIT ? 'Te-a <br><em>spart.</em>'
+    : game.credit > START_CREDIT ? 'L-ai <br><em>spart.</em>'
+    : game.spins === 0 ? 'Ai câștigat <br><em>timp.</em>'
+    : 'Ai ieșit <br><em>pe zero.</em>';
   if (!$('receipt-dialog').open) $('receipt-dialog').showModal();
   sound.receipt();
 }
@@ -112,7 +126,7 @@ document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('c
   if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
 }));
 $('restart').addEventListener('click', () => {
-  game.reset(); startedWallTime = null; winningUntil = 0;
+  game.reset(); startedWallTime = null; scene.effects.clear();
   screen.result = null; $('receipt-dialog').close();
   say('Mai bag o fisă. De data asta sigur plec.'); sync(); screen.draw(performance.now(), game);
 });
@@ -135,7 +149,7 @@ function frame(now) {
     lastPaint = now;
     if (screen.draw(now, game, index => sound.reelStop(index))) finishSpin();
   }
-  scene.render(now, now < winningUntil);
+  scene.render(now);
 }
 async function init() {
   say($('banter').textContent);
@@ -149,7 +163,7 @@ async function init() {
     requestAnimationFrame(frame);
     // Read-only diagnostics support render/performance and physical-button QA.
     Object.defineProperty(window, '__pacanele', { value: {
-      get state() { return { credit: game.credit, bet: game.bet, spins: game.spins, lastWin: game.lastWin, totalBet: game.totalBet, totalWon: game.totalWon, pending: !!game.pending, grid: screen.grid, result: screen.result, sound: sound.enabled, audioState: sound.context?.state, ready, drawCalls: scene.renderer.info.render.calls, pixelRatio: scene.renderer.getPixelRatio(), reducedMotion }; },
+      get state() { return { credit: game.credit, bet: game.bet, spins: game.spins, lastWin: game.lastWin, totalBet: game.totalBet, totalWon: game.totalWon, pending: !!game.pending, grid: screen.grid, result: screen.result, sound: sound.enabled, audioState: sound.context?.state, ready, drawCalls: scene.renderer.info.render.calls, pixelRatio: scene.renderer.getPixelRatio(), reducedMotion, effects: scene.effects.state }; },
       buttonPoints() { return scene.buttons.map(button => { const p = button.getWorldPosition(new THREE.Vector3()); p.project(scene.camera); return { action: button.userData.action, x: (p.x + 1) * .5 * scene.container.clientWidth, y: (1 - p.y) * .5 * scene.container.clientHeight }; }); },
     } });
   } catch (error) {
