@@ -10,6 +10,12 @@
     "test": "node --test tests/*.test.mjs",
     "test:browser": "playwright test"
   },
-  "dependencies": { "three": "0.180.0" },
-  "devDependencies": { "@playwright/test": "1.55.1", "esbuild": "0.25.10" }
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.1",
+    "esbuild": "0.25.10"
+  }
 }
